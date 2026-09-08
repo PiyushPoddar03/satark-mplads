@@ -2,7 +2,11 @@
  * API client for SATARK-MPLADS backend.
  */
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// An empty value deliberately means "this same site".  The Hugging Face
+// Docker deployment proxies /api and /evidence to FastAPI, keeping the UI and
+// API on one HTTPS origin.  Local development can still set
+// NEXT_PUBLIC_API_URL=http://localhost:8000 in .env.local.
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export interface UserProfile {
   id: string;

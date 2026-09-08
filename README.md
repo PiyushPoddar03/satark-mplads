@@ -1,8 +1,46 @@
+---
+title: SATARK MPLADS
+emoji: 🛡️
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # SATARK-MPLADS
 
 **Evidence-driven MPLADS monitoring and fraud/anomaly detection platform**
 
 Built for **Smart India Hackathon (SIH) 2026 — Problem Statement 102**
+
+## Deploy on Hugging Face Spaces
+
+This repository is ready for a single-container **Docker Space**. It serves
+the dashboard, FastAPI API, evidence files, and Swagger documentation from the
+same Space URL. Create a new Space with **SDK: Docker**, then push this
+repository's `main` branch to the Space repository:
+
+```bash
+git remote add hf https://huggingface.co/spaces/YOUR_USERNAME/satark-mplads
+git push hf main
+```
+
+In the Space's **Settings → Variables and secrets**, set `SECRET_KEY` as a
+secret to a newly generated random value. Enable **Persistent Storage** and
+set these variables so database records and evidence uploads survive rebuilds:
+
+| Variable | Value |
+| :--- | :--- |
+| `DATABASE_URL` | `sqlite+aiosqlite:////data/satark.db` |
+| `DATABASE_URL_SYNC` | `sqlite:////data/satark.db` |
+| `EVIDENCE_STORAGE_PATH` | `/data/evidence` |
+| `AI_MOCK_MODE` | `True` |
+
+After the Space reaches **Running**, open its URL and sign in with
+`admin@satark.gov.in` / `admin123`. API documentation is available at
+`/docs`. The Hugging Face build uses the root `Dockerfile`; do not deploy the
+older `satark-hf-space` folder, which contains only an API wrapper.
 
 ---
 
