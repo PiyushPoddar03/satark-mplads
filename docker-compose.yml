@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  # ── Backend FastAPI API Service ──────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: satark_backend
+    restart: always
+    environment:
+      - APP_NAME=SATARK-MPLADS
+      - DEBUG=False
+      - SECRET_KEY=satark-secret-key-production-change-this-in-env-998877
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,*
+      - DATABASE_URL=sqlite+aiosqlite:////app/storage/satark.db
+      - EVIDENCE_STORAGE_PATH=/app/storage/evidence
+    volumes:
+      - satark_data:/app/storage
+    ports:
+      - "8000:8000"
+
+  # ── Frontend Next.js Web App ─────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    container_name: satark_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  satark_data:
+    driver: local
