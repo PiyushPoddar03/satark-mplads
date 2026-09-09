@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
@@ -83,3 +85,46 @@ app.include_router(bills_router)
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "app": settings.APP_NAME, "version": settings.APP_VERSION}
+
+
+# Mount Static Next.js Frontend (Static Export)
+frontend_out = Path(__file__).resolve().parent.parent.parent / "frontend" / "out"
+if not frontend_out.exists():
+    frontend_out = Path(__file__).resolve().parent.parent / "out"
+if not frontend_out.exists():
+    frontend_out = Path("out")
+
+if frontend_out.exists() and (frontend_out / "index.html").exists():
+    _next_dir = frontend_out / "_next"
+    if _next_dir.exists():
+        app.mount("/_next", StaticFiles(directory=str(_next_dir)), name="next_static")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa_frontend(full_path: str):
+        # Allow FastAPI API routes and docs to pass through
+        if full_path.startswith("api/") or full_path.startswith("evidence/") or full_path in ("docs", "openapi.json", "redoc"):
+            raise HTTPException(status_code=404, detail="Not Found")
+
+        target = frontend_out / full_path
+        if target.is_file():
+            return FileResponse(target)
+
+        target_html = frontend_out / f"{full_path}.html"
+        if target_html.is_file():
+            return FileResponse(target_html)
+
+        target_index = target / "index.html"
+        if target_index.is_file():
+            return FileResponse(target_index)
+
+        if full_path.startswith("projects/"):
+            sample_project = frontend_out / "projects" / "1.html"
+            if sample_project.is_file():
+                return FileResponse(sample_project)
+
+        index_file = frontend_out / "index.html"
+        if index_file.is_file():
+            return FileResponse(index_file)
+
+        return FileResponse(frontend_out / "404.html")
+
