@@ -32,6 +32,9 @@ Thumbs.db
 
 # Storage
 backend/storage/evidence/
+*.db
+*.sqlite
+*.sqlite3
 
 # Coverage
 htmlcov/
