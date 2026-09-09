@@ -1,18 +1,48 @@
-# Deploy the SATARK dashboard to Vercel
+# Free deployment: Supabase + Vercel
 
-After the Render Blueprint finishes creating `satark-backend`, copy its public
-URL (for example `https://satark-backend.onrender.com`).
+This deployment uses two Vercel projects and one Supabase project:
 
-1. Import `PiyushPoddar03/satark-mplads` in Vercel.
-2. Set the project **Root Directory** to `frontend`.
-3. Add the environment variable below for Production, Preview, and Development:
+- `backend/` → Vercel FastAPI API
+- `frontend/` → Vercel Next.js dashboard
+- Supabase → PostgreSQL database and persistent evidence-file storage
 
-   ```text
-   NEXT_PUBLIC_API_URL=https://YOUR-RENDER-BACKEND.onrender.com
-   ```
+## 1. Create Supabase resources
 
-4. Deploy and open the Vercel URL. The API health check should be available at
-   `https://YOUR-RENDER-BACKEND.onrender.com/api/health`.
+Create a free Supabase project, then in **Storage** create a private bucket
+named `satark-evidence`. In **Connect**, copy the **Transaction pooler** URI
+(port `6543`) and in **Settings → API** copy the project URL and `service_role`
+key. The service-role key belongs only in Vercel's backend environment settings.
 
-The Render free tier is suitable for this demo but can sleep when idle. Its free
-Postgres database expires after 30 days, so export important data before then.
+## 2. Deploy the API Vercel project
+
+Import this GitHub repository and set **Root Directory** to `backend`. Add each
+variable for Production, Preview, and Development:
+
+```text
+DATABASE_URL=<Supabase transaction-pooler URI>
+SUPABASE_URL=<Supabase project URL>
+SUPABASE_SERVICE_ROLE_KEY=<Supabase service_role key>
+SUPABASE_STORAGE_BUCKET=satark-evidence
+SERVERLESS=true
+SECRET_KEY=<new random 64+ character value>
+CORS_ORIGINS=*
+AI_MOCK_MODE=true
+```
+
+Deploy it and confirm `https://YOUR-API.vercel.app/api/health` responds with
+`{"status":"ok", ...}`.
+
+## 3. Deploy the dashboard Vercel project
+
+Import the same repository again, with **Root Directory** set to `frontend`.
+Set this variable for all environments:
+
+```text
+NEXT_PUBLIC_API_URL=https://YOUR-API.vercel.app
+```
+
+Deploy, then sign in with `admin@satark.gov.in` and `admin123`.
+
+The Supabase free tier includes 500 MB PostgreSQL and 1 GB file storage, but
+pauses inactive projects after one week. Vercel's Python runtime runs FastAPI
+as a serverless function, so startup may be slower after inactivity.

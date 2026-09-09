@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 
@@ -16,7 +17,14 @@ engine_args = {
 
 db_url = settings.async_database_url
 
-if not db_url.startswith("sqlite"):
+if settings.SERVERLESS or "pooler.supabase.com" in db_url:
+    # Serverless functions must not retain connections between invocations.
+    # Supabase's transaction pooler also requires prepared-statement caching off.
+    engine_args.update({
+        "poolclass": NullPool,
+        "connect_args": {"statement_cache_size": 0},
+    })
+elif not db_url.startswith("sqlite"):
     engine_args.update({
         "pool_pre_ping": True,
         "pool_size": 10,

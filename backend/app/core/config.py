@@ -32,6 +32,12 @@ class Settings(BaseSettings):
 
     # Storage
     EVIDENCE_STORAGE_PATH: str = "./storage/evidence"
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+    SUPABASE_STORAGE_BUCKET: str = "satark-evidence"
+
+    # Hosting
+    SERVERLESS: bool = False
 
     # AI
     AI_MOCK_MODE: bool = True
@@ -47,6 +53,8 @@ class Settings(BaseSettings):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgresql://") and "+asyncpg" not in url:
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        # Supabase displays libpq-style sslmode URLs; asyncpg expects ssl.
+        url = url.replace("sslmode=require", "ssl=require")
         return url
 
     @property
@@ -54,6 +62,10 @@ class Settings(BaseSettings):
         path = Path(self.EVIDENCE_STORAGE_PATH)
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    @property
+    def uses_supabase_storage(self) -> bool:
+        return bool(self.SUPABASE_URL and self.SUPABASE_SERVICE_ROLE_KEY)
 
     model_config = {"env_file": ".env", "case_sensitive": True}
 

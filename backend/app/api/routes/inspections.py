@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +33,7 @@ from app.models.models import (
 )
 from app.services.ai import analyze_project_evidence, evaluate_project_risk
 from app.services.audit import log_audit
+from app.services.storage import download_evidence, upload_evidence
 from app.utils.geo import is_within_geofence
 
 settings = get_settings()
@@ -214,14 +215,18 @@ async def upload_evidence(
     # Generate evidence code
     evidence_code = f"EVD-{uuid.uuid4().hex[:8].upper()}"
 
-    # Store file
-    storage_dir = settings.evidence_storage / str(project.id)
-    storage_dir.mkdir(parents=True, exist_ok=True)
+    # Store file. Supabase Storage is used in Vercel/serverless deployments;
+    # a local directory remains available for local development.
     safe_filename = f"{evidence_code}_{file.filename or 'evidence.jpg'}"
     storage_key = f"{project.id}/{safe_filename}"
-    file_path = settings.evidence_storage / storage_key
-    with open(file_path, "wb") as f:
-        f.write(content)
+    if settings.uses_supabase_storage:
+        await upload_evidence(storage_key, content, file.content_type or "image/jpeg")
+    else:
+        storage_dir = settings.evidence_storage / str(project.id)
+        storage_dir.mkdir(parents=True, exist_ok=True)
+        file_path = settings.evidence_storage / storage_key
+        with open(file_path, "wb") as f:
+            f.write(content)
 
     # Parse capture timestamp
     if capture_timestamp:
@@ -445,6 +450,10 @@ async def get_inspection_evidence(
 @router.get("/evidence-file/{storage_key:path}")
 async def get_evidence_file(storage_key: str):
     """Serve stored inspection evidence image with appropriate content type."""
+    if settings.uses_supabase_storage:
+        content, media_type = await download_evidence(storage_key)
+        return Response(content=content, media_type=media_type)
+
     file_path = (settings.evidence_storage / storage_key).resolve()
 
     # Security check: ensure path is within evidence_storage
@@ -467,4 +476,3 @@ async def get_evidence_file(storage_key: str):
     }
     media_type = media_types.get(suffix, "image/jpeg")
     return FileResponse(path=str(file_path), media_type=media_type)
-
